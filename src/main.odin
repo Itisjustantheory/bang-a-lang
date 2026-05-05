@@ -38,9 +38,9 @@ main :: proc() {
 
 	if assembly_file_error != os.ERROR_NONE do errout("binary file could not be opened (read error)")
 
-	fmt.fprintln(assembly_file, "define _start")
+	fmt.fprintln(assembly_file, "global _start")
 	fmt.fprintln(assembly_file, "_start:")
-	fmt.fprintln(assembly_file, "	mov rdx , 60 ; syscall identity (exit)")
+	fmt.fprintln(assembly_file, "	mov rax , 60 ; syscall identity (exit)")
 	fmt.fprintln(assembly_file, "	mov rdi , 0  ; exit code ")
 	fmt.fprintln(
 		assembly_file,
