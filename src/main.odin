@@ -15,17 +15,22 @@ debugout :: #force_inline proc(message: string) {
 
 main :: proc() {
 
-
+	debugout("ENTRY")
 	raw_source, read_error := os.read_entire_file_from_path(
-		"./bangalang_examples/empty.bang",
+		"./bangalang_examples/exit.bang",
 		context.allocator,
 	)
 
 
 	if read_error != os.ERROR_NONE do errout("bangalang source does not exist! (read error)")
 
+	debugout("READ SUCCESS!")
 
 	source := string(raw_source)
+
+	tokens := tokenize(source)
+
+	debugout("TOKENIZE SUCCCESS!")
 
 
 	assembly_file, assembly_file_error := os.open(
@@ -40,12 +45,16 @@ main :: proc() {
 
 	fmt.fprintln(assembly_file, "global _start")
 	fmt.fprintln(assembly_file, "_start:")
-	fmt.fprintln(assembly_file, "	mov rax , 60 ; syscall identity (exit)")
-	fmt.fprintln(assembly_file, "	mov rdi , 0  ; exit code ")
-	fmt.fprintln(
-		assembly_file,
-		"	syscall      ; call said syscall with exit code (exits with exit code 0) ",
-	)
+
+	if tokens[0] == "exit" && tokens[1] == "(" && tokens[3] == ")" {
+		fmt.fprintln(assembly_file, "	mov rax , 60 ; syscall identity (exit)")
+		fmt.fprintfln(assembly_file, "	mov rdi , %s  ; exit code ", tokens[2])
+		fmt.fprintfln(
+			assembly_file,
+			"	syscall      ; call said syscall with exit code (exits with exit code %s) ",
+			tokens[2],
+		)
+	} else do errout("Unrecognized token pattern!")
 
 
 }
