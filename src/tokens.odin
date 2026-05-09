@@ -3,10 +3,21 @@ package main
 import "core:strings"
 
 
-tokenize :: proc(source: string) -> [dynamic]string {
+TokenType :: enum {
+	OPEN_PARENTHESES,
+	CLOSE_PARENTHESES,
+	EQUALS,
+	IDENTIFER,
+	INTEGER_LITERAL,
+}
+
+Token :: struct {
+	lexeme: string,
+	type:   TokenType,
+}
 
 
-	tokens: [dynamic]string = {}
+tokenize :: proc(source: string) -> (tokens: [dynamic]Token) {
 
 
 	for index := 0; index < len(source); index += 1 {
@@ -14,18 +25,27 @@ tokenize :: proc(source: string) -> [dynamic]string {
 		if strings.is_space(rune(source[index])) do continue
 
 		if source[index] == '(' {
-			append(&tokens, "(")
+			append(&tokens, Token{lexeme = "(", type = .OPEN_PARENTHESES})
 		} else if source[index] == ')' {
-			append(&tokens, ")")
-		} else if source[index] == 'e' {
+			append(&tokens, Token{lexeme = ")", type = .CLOSE_PARENTHESES})
+		} else if source[index] == '=' {
+			append(&tokens, Token{lexeme = "=", type = .EQUALS})
+		} else if (source[index] >= 'A' && source[index] <= 'Z') ||
+		   (source[index] >= 'a' && source[index] <= 'z') ||
+		   source[index] == '_' {
 
-			if index + 3 >= len(source) do errout("not enough space for parsing 'exit' ")
+			start := index
+			end := index + 1
 
-			if source[index + 1] != 'x' || source[index + 2] != 'i' || source[index + 3] != 't' do errout("you spelt 'exit' wrong!")
+			for (source[end] >= 'A' && source[end] <= 'Z') ||
+			    (source[end] >= 'a' && source[end] <= 'z') ||
+			    source[end] == '_' ||
+			    (source[end] >= '0' && source[index] <= '9') {
+				end += 1
+			}
 
-			append(&tokens, "exit")
-			index += 3
-
+			append(&tokens, Token{lexeme = source[start:end], type = .IDENTIFER})
+			index = end - 1
 		} else if (source[index] >= '0' && source[index] <= '9') || source[index] == '-' {
 
 			start := index
@@ -43,11 +63,11 @@ tokenize :: proc(source: string) -> [dynamic]string {
 				errout("negative what though?")
 			}
 
-			append(&tokens, source[start:end])
+			append(&tokens, Token{lexeme = source[start:end], type = .INTEGER_LITERAL})
 			index = end - 1
 		} else do errout("Unknown character")
 
 	}
 
-	return tokens
+	return
 }
