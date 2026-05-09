@@ -46,6 +46,7 @@ tokenize :: proc(source: string) -> (tokens: [dynamic]Token) {
 
 			append(&tokens, Token{lexeme = source[start:end], type = .IDENTIFER})
 			index = end - 1
+
 		} else if (source[index] >= '0' && source[index] <= '9') || source[index] == '-' {
 
 			start := index

@@ -17,7 +17,7 @@ main :: proc() {
 
 	debugout("ENTRY")
 	raw_source, read_error := os.read_entire_file_from_path(
-		"./bangalang_examples/exit.bang",
+		"./bangalang_examples/variable_assign.bang",
 		context.allocator,
 	)
 
@@ -30,6 +30,9 @@ main :: proc() {
 
 	tokens := tokenize(source)
 
+	fmt.fprint(os.stdout, tokens)
+	fmt.fprint(os.stdout, "\n")
+
 	debugout("TOKENIZE SUCCCESS!")
 
 
@@ -39,11 +42,13 @@ main :: proc() {
 		os.Permissions_All,
 	)
 
+	debugout("ASSEMBLY FILE ACCESSED (OR CREATED)!")
+
 	defer os.close(assembly_file)
 
 	if assembly_file_error != os.ERROR_NONE do errout("binary file could not be opened (read error)")
 
-	fmt.fprintln(assembly_file, "global _start")
+	/*fmt.fprintln(assembly_file, "global _start")
 	fmt.fprintln(assembly_file, "_start:")
 
 	if tokens[0] == "exit" && tokens[1] == "(" && tokens[3] == ")" {
@@ -55,6 +60,7 @@ main :: proc() {
 			tokens[2],
 		)
 	} else do errout("Unrecognized token pattern!")
+	*/
 
 
 }
