@@ -7,7 +7,7 @@ TokenType :: enum {
 	OPEN_PARENTHESES,
 	CLOSE_PARENTHESES,
 	EQUALS,
-	IDENTIFER,
+	IDENTIFIER,
 	INTEGER_LITERAL,
 }
 
@@ -19,18 +19,23 @@ Token :: struct {
 
 tokenize :: proc(source: string) -> (tokens: [dynamic]Token) {
 
-
 	for index := 0; index < len(source); index += 1 {
 
 		if strings.is_space(rune(source[index])) do continue
 
 		if source[index] == '(' {
 			append(&tokens, Token{lexeme = "(", type = .OPEN_PARENTHESES})
-		} else if source[index] == ')' {
+
+		}
+	 	else if source[index] == ')' {
 			append(&tokens, Token{lexeme = ")", type = .CLOSE_PARENTHESES})
-		} else if source[index] == '=' {
+
+		}
+		else if source[index] == '=' {
 			append(&tokens, Token{lexeme = "=", type = .EQUALS})
-		} else if (source[index] >= 'A' && source[index] <= 'Z') ||
+
+		}
+		else if (source[index] >= 'A' && source[index] <= 'Z') ||
 		   (source[index] >= 'a' && source[index] <= 'z') ||
 		   source[index] == '_' {
 
@@ -44,10 +49,11 @@ tokenize :: proc(source: string) -> (tokens: [dynamic]Token) {
 				end += 1
 			}
 
-			append(&tokens, Token{lexeme = source[start:end], type = .IDENTIFER})
+			append(&tokens, Token{lexeme = source[start:end], type = .IDENTIFIER})
 			index = end - 1
 
-		} else if (source[index] >= '0' && source[index] <= '9') || source[index] == '-' {
+		}
+		else if (source[index] >= '0' && source[index] <= '9') || source[index] == '-' {
 
 			start := index
 			end := index

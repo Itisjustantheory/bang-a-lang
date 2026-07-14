@@ -13,6 +13,7 @@ debugout :: #force_inline proc(message: string) {
 	fmt.fprintfln(os.stdout, "[DEBUG]: %s", message)
 }
 
+
 main :: proc() {
 
 	debugout("ENTRY")
@@ -42,25 +43,106 @@ main :: proc() {
 		os.Permissions_All,
 	)
 
+
 	debugout("ASSEMBLY FILE ACCESSED (OR CREATED)!")
 
 	defer os.close(assembly_file)
 
 	if assembly_file_error != os.ERROR_NONE do errout("binary file could not be opened (read error)")
 
-	/*fmt.fprintln(assembly_file, "global _start")
+	fmt.fprintln(assembly_file, "global _start")
 	fmt.fprintln(assembly_file, "_start:")
 
-	if tokens[0] == "exit" && tokens[1] == "(" && tokens[3] == ")" {
-		fmt.fprintln(assembly_file, "	mov rax , 60 ; syscall identity (exit)")
-		fmt.fprintfln(assembly_file, "	mov rdi , %s  ; exit code ", tokens[2])
-		fmt.fprintfln(
-			assembly_file,
-			"	syscall      ; call said syscall with exit code (exits with exit code %s) ",
-			tokens[2],
-		)
-	} else do errout("Unrecognized token pattern!")
-	*/
+	stack_pointer := 0
+
+	stack_variables := make(map[string]int)
+	defer delete(stack_variables)
+
+	for index := 0; index < len(tokens); {
+
+		#partial switch tokens[index].type {
+
+			case .IDENTIFIER:
+				if (index + 1) >= len(tokens) do errout("EOF encountered")
+
+				#partial switch tokens[index + 1].type {
+					case .EQUALS:
+
+						if (index + 2) >= len(tokens) do errout("Invalid assignment statement")
+
+						fmt.fprintln(assembly_file, "    ; assign")
+
+						if tokens[index + 2].type == .IDENTIFIER {
+
+							if tokens[index + 2].lexeme not_in stack_variables {
+								fmt.printfln("reference to undeclared variable: %s" , tokens[index + 2].lexeme)
+								os.exit(-1)
+							}
+
+							variable_pointer := stack_variables[tokens[index + 2].lexeme]
+							offset := stack_pointer - variable_pointer
+							fmt.fprintfln(assembly_file, "    mov rax , [rsp + %i]" , offset)
+							fmt.fprintln(assembly_file, "    mov [rsp] , rax")
+							stack_variables[tokens[index].lexeme] = stack_pointer
+
+							fmt.fprintln(assembly_file, "    sub rsp , 8 ; allocates 64 bits onto the stack")
+							stack_pointer += 8
+						}
+						else if tokens[index + 2].type == .INTEGER_LITERAL {
+
+							fmt.fprintfln(assembly_file, "    mov QWORD [rsp] , %s ; assign value" , tokens[index + 2].lexeme)
+							stack_variables[tokens[index].lexeme] = stack_pointer
+
+							fmt.fprintln(assembly_file, "    sub rsp , 8 ; allocates 64 bits onto the stack")
+							stack_pointer += 8
+
+						}
+						else {
+							errout("invalid statement")
+						}
+
+						index += 3
+
+
+					case .OPEN_PARENTHESES:
+
+						if (index + 3) >= len(tokens) do errout("EOF encountered")
+
+						fmt.fprintln(assembly_file, "    ; exit")
+
+
+
+						fmt.fprintln(assembly_file, "    mov rax , 60 ; syscall to exit")
+
+						if tokens[index + 2].type == .IDENTIFIER && tokens[index + 3].type == .CLOSE_PARENTHESES {
+							variable_pointer := stack_variables[tokens[index + 2].lexeme]
+							offset := stack_pointer - variable_pointer
+							fmt.fprintfln(assembly_file, "    mov rdi , [rsp + %i] ; exit code" , offset)
+						}
+						else if tokens[index + 2].type == .INTEGER_LITERAL && tokens[index + 3].type == .CLOSE_PARENTHESES {
+							fmt.fprintfln(assembly_file, "    mov rdi, %s ; exit_code" , tokens[index + 2].lexeme);
+						}
+						else {
+							errout("invalid statement")
+						}
+
+						fmt.fprintln(assembly_file, "    syscall")
+						index += 4
+
+					case:
+						errout("invalid statement")
+				}
+			case:
+				errout("invalid statement")
+
+		}
+
+	}
+
+	fmt.fprintln(assembly_file , "    mov rax, 60 ; syscall to exit")
+	fmt.fprintln(assembly_file,  "    mov rdi, 0  ; exit_code")
+	fmt.fprintln(assembly_file,  "    syscall")
+
 
 
 }
