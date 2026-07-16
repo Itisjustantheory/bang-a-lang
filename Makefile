@@ -19,4 +19,6 @@ clean:
 	rm -f bin/bang bin/bang.o
 
 run: bin/bang
-	./bin/bang
+	-./bin/bang; \
+	EXIT_CODE=$$?; \
+	echo "Program exited with code: $$EXIT_CODE"

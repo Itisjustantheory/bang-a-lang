@@ -4,6 +4,12 @@ package main
 import "core:fmt"
 import "core:os"
 
+@(private="file")
+make_makefile_work :: #force_inline proc(assembly_file : ^os.File) {
+	fmt.fprintfln(assembly_file , "    mov rax , 60")
+	fmt.fprintfln(assembly_file , "    xor rdi , rdi")
+	fmt.fprintfln(assembly_file,  "    syscall")
+}
 errout :: #force_inline proc(message: string) {
 	fmt.fprintfln(os.stderr, "[ERROR]: %s", message)
 	os.exit(-1)

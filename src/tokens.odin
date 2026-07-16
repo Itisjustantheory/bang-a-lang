@@ -17,6 +17,8 @@ Token :: struct {
 }
 
 
+
+
 tokenize :: proc(source: string) -> (tokens: [dynamic]Token) {
 
 	for index := 0; index < len(source); index += 1 {
