@@ -91,17 +91,17 @@ main :: proc() {
 						}
 						else if tokens[index + 2].type == .INTEGER_LITERAL {
 
+							fmt.fprintfln(assembly_file, "    mov rax , %s ; assign value" , tokens[index + 2].lexeme)
 
 							if tokens[index].lexeme in stack_variables
 							{
 								variable_pointer := stack_variables[tokens[index].lexeme]
 								offset := stack_pointer - variable_pointer
 
-								fmt.fprintfln(assembly_file, "    mov rax , %s ; assign value" , tokens[index + 2].lexeme)
+
 								fmt.fprintfln(assembly_file, "    mov [rsp + %i] , rax" , offset)
 							}
 							else {
-								fmt.fprintfln(assembly_file, "    mov rax , %s ; assign value" , tokens[index + 2].lexeme)
 								fmt.fprintfln(assembly_file, "    mov [rsp] , rax")
 								stack_variables[tokens[index].lexeme] = stack_pointer
 
