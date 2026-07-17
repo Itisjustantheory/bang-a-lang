@@ -2,7 +2,7 @@
 # CFLAGS :=
 # LDFLAGS :=
 
-.PHONY: all clean run
+.PHONY: all clean clean-all run
 
 
 all: bin/bang
@@ -17,6 +17,9 @@ bin/bang.o: bin/bang.asm
 
 clean:
 	rm -f bin/bang bin/bang.o
+
+clean-all:
+	rm -f bin/bang bin/bang.o bin/bang.asm
 
 run: bin/bang
 	-./bin/bang; \

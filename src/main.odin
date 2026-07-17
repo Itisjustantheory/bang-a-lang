@@ -4,12 +4,7 @@ package main
 import "core:fmt"
 import "core:os"
 
-@(private="file")
-make_makefile_work :: #force_inline proc(assembly_file : ^os.File) {
-	fmt.fprintfln(assembly_file , "    mov rax , 60")
-	fmt.fprintfln(assembly_file , "    xor rdi , rdi")
-	fmt.fprintfln(assembly_file,  "    syscall")
-}
+
 errout :: #force_inline proc(message: string) {
 	fmt.fprintfln(os.stderr, "[ERROR]: %s", message)
 	os.exit(-1)
@@ -76,7 +71,7 @@ main :: proc() {
 
 						if (index + 2) >= len(tokens) do errout("Invalid assignment statement")
 
-						fmt.fprintln(assembly_file, "    ; assign")
+						fmt.fprintfln(assembly_file, "    ; assign %s" , tokens[index].lexeme )
 
 						if tokens[index + 2].type == .IDENTIFIER {
 
@@ -96,16 +91,26 @@ main :: proc() {
 						}
 						else if tokens[index + 2].type == .INTEGER_LITERAL {
 
-							fmt.fprintfln(assembly_file, "    mov QWORD [rsp] , %s ; assign value" , tokens[index + 2].lexeme)
-							stack_variables[tokens[index].lexeme] = stack_pointer
 
-							fmt.fprintln(assembly_file, "    sub rsp , 8 ; allocates 64 bits onto the stack")
-							stack_pointer += 8
+							if tokens[index].lexeme in stack_variables
+							{
+								variable_pointer := stack_variables[tokens[index].lexeme]
+								offset := stack_pointer - variable_pointer
+
+								fmt.fprintfln(assembly_file, "    mov rax , %s ; assign value" , tokens[index + 2].lexeme)
+								fmt.fprintfln(assembly_file, "    mov [rsp + %i] , rax" , offset)
+							}
+							else {
+								fmt.fprintfln(assembly_file, "    mov rax , %s ; assign value" , tokens[index + 2].lexeme)
+								fmt.fprintfln(assembly_file, "    mov [rsp] , rax")
+								stack_variables[tokens[index].lexeme] = stack_pointer
+
+								fmt.fprintln(assembly_file, "    sub rsp , 8 ; allocates 64 bits onto the stack")
+								stack_pointer += 8
+							}
 
 						}
-						else {
-							errout("invalid statement")
-						}
+						else do errout("invalid statement")
 
 						index += 3
 
@@ -128,9 +133,7 @@ main :: proc() {
 						else if tokens[index + 2].type == .INTEGER_LITERAL && tokens[index + 3].type == .CLOSE_PARENTHESES {
 							fmt.fprintfln(assembly_file, "    mov rdi, %s ; exit_code" , tokens[index + 2].lexeme);
 						}
-						else {
-							errout("invalid statement")
-						}
+						else do errout("invalid statement")
 
 						fmt.fprintln(assembly_file, "    syscall")
 						index += 4
