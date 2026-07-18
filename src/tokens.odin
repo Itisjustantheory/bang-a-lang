@@ -78,5 +78,5 @@ tokenize :: proc(source: string) -> (tokens: [dynamic]Token) {
 
 	}
 
-	return
+	return tokens
 }

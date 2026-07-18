@@ -32,10 +32,15 @@ main :: proc() {
 
 	tokens := tokenize(source)
 
-	fmt.fprint(os.stdout, tokens)
-	fmt.fprint(os.stdout, "\n")
-
+	fmt.print(tokens)
+	fmt.print("\n")
 	debugout("TOKENIZE SUCCCESS!")
+
+	ast_nodes := parse_program(tokens)
+	fmt.println("ast_nodes: ")
+	fmt.println(ast_nodes)
+	debugout("PARSING SUCCESS!")
+
 
 
 	assembly_file, assembly_file_error := os.open(
@@ -97,7 +102,6 @@ main :: proc() {
 							{
 								variable_pointer := stack_variables[tokens[index].lexeme]
 								offset := stack_pointer - variable_pointer
-
 
 								fmt.fprintfln(assembly_file, "    mov [rsp + %i] , rax" , offset)
 							}
