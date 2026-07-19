@@ -7,6 +7,7 @@ TokenType :: enum {
 	OPEN_PARENTHESES,
 	CLOSE_PARENTHESES,
 	EQUALS,
+	COLON,
 	IDENTIFIER,
 	INTEGER_LITERAL,
 }
@@ -35,7 +36,9 @@ tokenize :: proc(source: string) -> (tokens: [dynamic]Token) {
 		}
 		else if source[index] == '=' {
 			append(&tokens, Token{lexeme = "=", type = .EQUALS})
-
+		}
+		else if source[index] == ':' {
+			append(&tokens, Token{lexeme = ":" , type = .COLON})
 		}
 		else if (source[index] >= 'A' && source[index] <= 'Z') ||
 		   (source[index] >= 'a' && source[index] <= 'z') ||

@@ -48,6 +48,8 @@ generate_statement :: proc(file : ^os.File , node : AstNode , stack : ^Stack) {
 
 	#partial switch node.type {
 
+		case .DECLARATION_STATEMENT:
+			generate_declaration_statement(file , node , stack)
 		case .ASSIGNMENT_STATEMENT:
 			generate_assignment_statement(file , node , stack)
 		case .EXIT_STATEMENT:
@@ -55,6 +57,44 @@ generate_statement :: proc(file : ^os.File , node : AstNode , stack : ^Stack) {
 		case:
 			errout("unexpected generation error!")
 	}
+}
+
+generate_declaration_statement :: proc(file : ^os.File , node : AstNode , stack : ^Stack) {
+
+	lhs := node.children[0]
+	rhs := node.children[1]
+
+	emit_assembly(file , "; declare %s" , lhs.value , level =  1)
+
+	if rhs.children[0].type == .IDENTIFIER {
+
+		if rhs.children[0].value not_in stack.variables {
+			fmt.printfln("undeclared identifier: %s" , rhs.children[0].value)
+			os.exit(-1)
+		}
+
+		variable_pointer := stack.variables[rhs.children[0].value]
+		variable_offset := stack.top - variable_pointer
+
+		emit_assembly(file , "mov rax , [rsp + %i]" , variable_offset , level = 1)
+	}
+	else if rhs.children[0].type == .INTEGER_LITERAL {
+
+		emit_assembly(file , "mov rax , %s" , rhs.children[0].value , level = 1)
+	}
+	else do errout("invalid declaration")
+
+	if lhs.value in stack.variables {
+
+		fmt.printfln("variable '%s' already declared!" , lhs.value)
+		os.exit(-1)
+	}
+
+	emit_assembly(file , "mov [rsp] , rax" , level = 1)
+	emit_assembly(file , "sub rsp , 8" , level = 1)
+	stack.variables[lhs.value] = stack.top
+	stack.top += 8
+
 }
 
 generate_assignment_statement :: proc(file : ^os.File , node : AstNode , stack : ^Stack) {
@@ -65,13 +105,13 @@ generate_assignment_statement :: proc(file : ^os.File , node : AstNode , stack :
 	lhs := node.children[0]
 	rhs := node.children[1]
 
-	emit_assembly(file , "; assign %s" , rhs.children[0].value , level =  1)
+	emit_assembly(file , "; assign to %s" , lhs.value , level =  1)
 
 	if rhs.children[0].type == .IDENTIFIER {
 
 		if rhs.children[0].value not_in stack.variables {
 			fmt.printfln("undeclared identifier: %s" , rhs.children[0].value)
-			os.exit(1)
+			os.exit(-1)
 		}
 
 		variable_pointer := stack.variables[rhs.children[0].value]
@@ -85,20 +125,18 @@ generate_assignment_statement :: proc(file : ^os.File , node : AstNode , stack :
 	}
 	else do errout("invalid assignment")
 
-	if lhs.value in stack.variables {
+	if lhs.value not_in stack.variables {
 
-		emit_assembly(file , "; from %s" , rhs.children[0].value , level = 1)
-		variable_pointer := stack.variables[lhs.value]
-		variable_offset := stack.top - variable_pointer
+		fmt.printfln("invalid assignment to undeclared variable: %s" , lhs.value)
+		os.exit(-1)
+	}
 
-		emit_assembly(file , "mov [rsp + %i] , rax" , variable_offset , level = 1)
-	}
-	else {
-		emit_assembly(file , "mov [rsp] , rax" , level = 1)
-		stack.variables[lhs.value] = stack.top
-		emit_assembly(file , "sub rsp , 8" , level = 1)
-		stack.top += 8
-	}
+	emit_assembly(file , "; move value to stack offset for %s" , lhs.value , level = 1)
+	variable_pointer := stack.variables[lhs.value]
+	variable_offset := stack.top - variable_pointer
+
+	emit_assembly(file , "mov [rsp + %i] , rax" , variable_offset , level = 1)
+
 
 
 
