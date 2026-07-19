@@ -2,10 +2,14 @@ package main
 
 import "core:strings"
 
+import "core:fmt"
+import "core:os"
 
 TokenType :: enum {
 	OPEN_PARENTHESES,
 	CLOSE_PARENTHESES,
+	OPEN_CURLY_BRACKETS,
+	CLOSE_CURLY_BRACKETS,
 	EQUALS,
 	COLON,
 	IDENTIFIER,
@@ -26,7 +30,13 @@ tokenize :: proc(source: string) -> (tokens: [dynamic]Token) {
 
 		if strings.is_space(rune(source[index])) do continue
 
-		if source[index] == '(' {
+		if source[index] == '{' {
+			append(&tokens , Token{lexeme = "{" , type = .OPEN_CURLY_BRACKETS})
+		}
+		else if source[index] == '}' {
+			append(&tokens , Token{lexeme = "}" , type = .CLOSE_CURLY_BRACKETS})
+		}
+		else if source[index] == '(' {
 			append(&tokens, Token{lexeme = "(", type = .OPEN_PARENTHESES})
 
 		}
@@ -77,7 +87,11 @@ tokenize :: proc(source: string) -> (tokens: [dynamic]Token) {
 
 			append(&tokens, Token{lexeme = source[start:end], type = .INTEGER_LITERAL})
 			index = end - 1
-		} else do errout("Unknown character")
+		}
+		else {
+			fmt.printfln("unknown character: %s" , source[index])
+			os.exit(-1)
+		}
 
 	}
 

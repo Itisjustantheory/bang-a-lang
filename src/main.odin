@@ -5,7 +5,7 @@ import "core:fmt"
 import "core:os"
 
 
-errout :: #force_inline proc(message: string) {
+errout :: #force_inline proc(message: string) -> ! {
 	fmt.fprintfln(os.stderr, "[ERROR]: %s", message)
 	os.exit(-1)
 }
@@ -17,11 +17,16 @@ debugout :: #force_inline proc(message: string) {
 
 main :: proc() {
 
+	if len(os.args) != 2 do errout("./bangc <file-path>")
+
 	debugout("ENTRY")
+
 	raw_source, read_error := os.read_entire_file_from_path(
-		"./bangalang_examples/variable_assign.bang",
+		os.args[1],
 		context.allocator,
 	)
+
+	defer delete(raw_source)
 
 
 	if read_error != os.ERROR_NONE do errout("bangalang source does not exist! (read error)")

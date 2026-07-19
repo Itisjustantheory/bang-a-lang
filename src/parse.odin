@@ -2,6 +2,7 @@ package main
 
 
 AstNodeType :: enum {
+	SCOPE,
 	DECLARATION_STATEMENT,
 	ASSIGNMENT_STATEMENT,
 	EXIT_STATEMENT,
@@ -35,17 +36,20 @@ parse_statement :: proc(tokens : [dynamic]Token, start_index : int) -> (node : A
 
 	#partial switch tokens[start_index].type {
 
+		case .OPEN_CURLY_BRACKETS:
+			node , token_parsed = parse_scope_statement(tokens , start_index)
+
 		case .IDENTIFIER:
 			if start_index + 2 >= len(tokens) do errout("EOF encountered")
 
 			#partial switch tokens[start_index + 1].type {
 
+				case .OPEN_PARENTHESES:
+					node , token_parsed = parse_exit_statement(tokens , start_index)
 				case .COLON:
 					node , token_parsed = parse_declaration_statement(tokens , start_index)
 				case .EQUALS:
 					node , token_parsed = parse_assignment_statement(tokens , start_index)
-				case .OPEN_PARENTHESES:
-					node , token_parsed = parse_exit_statement(tokens , start_index)
 
 				case:
 					errout("invalid statement")
@@ -57,6 +61,32 @@ parse_statement :: proc(tokens : [dynamic]Token, start_index : int) -> (node : A
 	}
 
 	return node , token_parsed
+}
+
+parse_scope_statement :: proc(tokens : [dynamic]Token , start_index : int) -> (node : AstNode , token_parsed : int) {
+
+	node.type = .SCOPE
+
+
+	// for the '{'
+	token_parsed += 1
+
+	for token_parsed + start_index < len(tokens) {
+
+		if tokens[token_parsed + start_index].type == .CLOSE_CURLY_BRACKETS {
+
+			// for the '}'
+			token_parsed += 1
+			return node , token_parsed
+		}
+
+		inter_node , parsed := parse_statement(tokens , token_parsed + start_index)
+		append(&node.children , inter_node)
+
+		token_parsed += parsed
+	}
+
+	errout("unterminated scope!")
 }
 
 parse_declaration_statement :: proc(tokens : [dynamic]Token , start_index : int) -> (node : AstNode , token_parsed : int) {

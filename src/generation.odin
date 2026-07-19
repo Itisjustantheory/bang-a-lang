@@ -34,8 +34,8 @@ generate_program :: proc(file_name : string , nodes : [dynamic]AstNode) {
 
 
 
-	for index := 0; index < len(nodes); index += 1 {
-		generate_statement(assembly_file , nodes[index] , &stack)
+	for node in nodes {
+		generate_statement(assembly_file , node , &stack)
 	}
 
 	emit_assembly(assembly_file , "mov rax , 60" , level = 1)
@@ -48,6 +48,8 @@ generate_statement :: proc(file : ^os.File , node : AstNode , stack : ^Stack) {
 
 	#partial switch node.type {
 
+		case .SCOPE:
+			generate_scope(file , node , stack)
 		case .DECLARATION_STATEMENT:
 			generate_declaration_statement(file , node , stack)
 		case .ASSIGNMENT_STATEMENT:
@@ -57,6 +59,33 @@ generate_statement :: proc(file : ^os.File , node : AstNode , stack : ^Stack) {
 		case:
 			errout("unexpected generation error!")
 	}
+}
+
+generate_scope :: proc(file : ^os.File , node : AstNode , stack : ^Stack) {
+
+	emit_assembly(file , "; start scope" , level =  1)
+
+	scope_start := stack.top
+	scoped_stack := Stack{
+		top = stack.top,
+		variables = make(map[string]int)
+	}
+
+	defer delete(scoped_stack.variables)
+
+	for key , value in stack.variables {
+		scoped_stack.variables[key] = value
+	}
+
+
+
+	for child in node.children {
+		generate_statement(file , child , &scoped_stack)
+	}
+
+
+	if scoped_stack.top - stack.top != 0 do emit_assembly(file , "add rsp , %i" , scoped_stack.top - stack.top , level = 1)
+	emit_assembly(file , "; end scope" , level = 1)
 }
 
 generate_declaration_statement :: proc(file : ^os.File , node : AstNode , stack : ^Stack) {
