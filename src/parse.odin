@@ -16,167 +16,161 @@ AstNode :: struct {
 	type : AstNodeType,
 	value : string,
 	children : [dynamic]AstNode,
+	position : Position,
 }
 
-parse_program :: proc(tokens : [dynamic]Token) -> (nodes : [dynamic]AstNode) {
+parse_program :: proc(stream : ^TokenStream) -> (nodes : [dynamic]AstNode) {
 
-	for index := 0; index < len(tokens); {
+	for stream.next_index < len(stream.tokens) {
 
-		ast_node , token_count := parse_statement(tokens , index)
-
-		append(&nodes , ast_node)
-		index += token_count
+		append(&nodes , parse_statement(stream))
 	}
 
 
 	return nodes
 }
 
-parse_statement :: proc(tokens : [dynamic]Token, start_index : int) -> (node : AstNode , token_parsed : int) {
+parse_statement :: proc(stream : ^TokenStream) -> (node : AstNode) {
 
-	#partial switch tokens[start_index].type {
+	#partial switch peek_token(stream).type {
 
 		case .OPEN_CURLY_BRACKETS:
-			node , token_parsed = parse_scope_statement(tokens , start_index)
+			node = parse_scope_statement(stream)
 
 		case .IDENTIFIER:
-			if start_index + 2 >= len(tokens) do errout("EOF encountered")
 
-			#partial switch tokens[start_index + 1].type {
+			#partial switch peek_token(stream , offset = 1).type {
 
 				case .OPEN_PARENTHESES:
-					node , token_parsed = parse_exit_statement(tokens , start_index)
+					node = parse_exit_statement(stream)
 				case .COLON:
-					node , token_parsed = parse_declaration_statement(tokens , start_index)
+					node = parse_declaration_statement(stream)
 				case .EQUALS:
-					node , token_parsed = parse_assignment_statement(tokens , start_index)
+					node = parse_assignment_statement(stream)
 
 				case:
-					errout("invalid statement")
+					token := peek_token(stream)
+					errout("Failed to parse statement\ninvalid token at line-number: %s at column: %s" , token.position.line_number , token.position.line_number)
 			}
 
 		case:
-			errout("invalid statement")
+			token := peek_token(stream)
+			errout("Failed to parse statement\ninvalid token at line-number: %s at column: %s" , token.position.line_number , token.position.column_number)
 
 	}
 
-	return node , token_parsed
+	return node
 }
 
-parse_scope_statement :: proc(tokens : [dynamic]Token , start_index : int) -> (node : AstNode , token_parsed : int) {
+parse_scope_statement :: proc(stream : ^TokenStream) -> (node : AstNode) {
 
 	node.type = .SCOPE
 
+	node.position.line_number = peek_token(stream).position.line_number
+	node.position.column_number = peek_token(stream).position.column_number
 
-	// for the '{'
-	token_parsed += 1
+	next_token(stream , []TokenType { .OPEN_CURLY_BRACKETS })
 
-	for token_parsed + start_index < len(tokens) {
+	for stream.next_index < len(stream.tokens) {
 
-		if tokens[token_parsed + start_index].type == .CLOSE_CURLY_BRACKETS {
-
-			// for the '}'
-			token_parsed += 1
-			return node , token_parsed
+		if peek_token(stream).type == .CLOSE_CURLY_BRACKETS {
+			next_token(stream)
+			return node
 		}
 
-		inter_node , parsed := parse_statement(tokens , token_parsed + start_index)
-		append(&node.children , inter_node)
-
-		token_parsed += parsed
+		append(&node.children , parse_statement(stream))
 	}
 
 	errout("unterminated scope!")
 }
 
-parse_declaration_statement :: proc(tokens : [dynamic]Token , start_index : int) -> (node : AstNode , token_parsed : int) {
-
-	if start_index + 3 >= len(tokens) do errout("Invalid declaration")
+parse_declaration_statement :: proc(stream : ^TokenStream) -> (node : AstNode) {
 
 	node.type = .DECLARATION_STATEMENT
 
-	lhs := AstNode { type = .IDENTIFIER , value = tokens[start_index].lexeme }
+	node.position.line_number = peek_token(stream).position.line_number
+	node.position.column_number = peek_token(stream).position.column_number
+
+	lhs := AstNode { type = .IDENTIFIER , value = next_token(stream , []TokenType { .IDENTIFIER }).lexeme}
+
 	append(&node.children , lhs)
-	token_parsed += 1
 
-	if tokens[start_index + 1].type != .COLON || tokens[start_index + 2].type != .EQUALS do errout("Invalid declaration")
+	next_token(stream , []TokenType {.COLON})
+	next_token(stream , []TokenType {.EQUALS})
 
-	// for the ':' , '='
-	token_parsed += 2
 
-	rhs , parsed := parse_term(tokens , start_index + 3)
-	token_parsed += parsed
-
+	rhs := parse_term(stream)
 	append(&node.children , rhs)
 
-	return node , token_parsed
+	return node
 }
 
-parse_assignment_statement :: proc(tokens : [dynamic]Token , start_index : int ) -> (node : AstNode , token_parsed : int) {
-
-	if start_index + 2 >= len(tokens) do errout("Invalid assignment!")
+parse_assignment_statement :: proc(stream : ^TokenStream) -> (node : AstNode) {
 
 	node.type = .ASSIGNMENT_STATEMENT
 
-	lhs := AstNode { type = .IDENTIFIER , value = tokens[start_index].lexeme }
+	node.position.line_number = peek_token(stream).position.line_number
+	node.position.column_number = peek_token(stream).position.column_number
+
+	lhs := AstNode { type = .IDENTIFIER , value = next_token(stream , []TokenType { .IDENTIFIER }).lexeme}
+
 	append(&node.children , lhs)
-	token_parsed += 1
 
-	if tokens[start_index + 1].type != .EQUALS do errout("Invalid assignment!")
-	// for the '='
-	token_parsed += 1
+	next_token(stream , []TokenType {.EQUALS})
 
-	rhs , parsed := parse_term(tokens , start_index + 2)
-	token_parsed += parsed
 
+	rhs := parse_term(stream)
 	append(&node.children , rhs)
 
-	return node , token_parsed
+	return node
 }
 
-parse_exit_statement :: proc(tokens : [dynamic]Token , start_index : int ) -> (node : AstNode , token_parsed : int) {
-
-	if start_index + 3 >= len(tokens) do errout("invalid statement")
-
-	if tokens[start_index + 1].type != .OPEN_PARENTHESES || tokens[start_index + 3].type != .CLOSE_PARENTHESES do errout("invalid statement")
+parse_exit_statement :: proc(stream : ^TokenStream) -> (node : AstNode)  {
 
 	node.type = .EXIT_STATEMENT
 
-	// for the 'exit' and '('
-	token_parsed += 2
+	node.position.line_number = peek_token(stream).position.line_number
+	node.position.column_number = peek_token(stream).position.column_number
 
-	parameter_node , parsed := parse_term(tokens , start_index + 2)
-	append(&node.children , parameter_node)
+	exit := next_token(stream , []TokenType {.IDENTIFIER})
 
-	token_parsed += parsed
+	// technically this is redundant as next_token will call the asserted version
+	if exit.lexeme != "exit" {
+		errout("Failed to parse statement\ninvalid token at line-number: %s at column: %s" , exit.position.line_number , exit.position.column_number)
+	}
 
-	// for the ')'
-	token_parsed += 1
-	return node , token_parsed
+	next_token(stream , []TokenType {.OPEN_PARENTHESES})
+
+	parameter := parse_term(stream)
+	append(&node.children , parameter)
+
+	next_token(stream , []TokenType {.CLOSE_PARENTHESES})
+
+	return node
 }
 
-parse_term :: proc(tokens : [dynamic]Token , index : int ) -> (node : AstNode , token_parsed : int) {
+parse_term :: proc(stream : ^TokenStream) -> (node : AstNode) {
+
 
 	node.type = .TERM
 
-	child_node := AstNode { value = tokens[index].lexeme }
+	node.position.line_number = peek_token(stream).position.line_number
+	node.position.column_number = peek_token(stream).position.column_number
 
-	#partial switch tokens[index].type {
+	token := next_token(stream , []TokenType { .IDENTIFIER , .INTEGER_LITERAL })
+
+	node.value = token.lexeme
+
+	#partial switch token.type {
 
 		case .IDENTIFIER:
-			child_node.type = .IDENTIFIER
+			node.type = .IDENTIFIER
 		case .INTEGER_LITERAL:
-			child_node.type = .INTEGER_LITERAL
+			node.type = .INTEGER_LITERAL
 		case:
-			errout("invalid statement")
+			errout("Failed to parse term\ninvalid token at line-number: %s at column: %s" , token.position.line_number , token.position.column_number)
 	}
 
-	token_parsed += 1
-	append(&node.children , child_node)
-
-
-
-
-	return node , token_parsed
+	return node
 
 }

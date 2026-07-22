@@ -5,14 +5,17 @@ import "core:fmt"
 import "core:os"
 
 
-errout :: #force_inline proc(message: string) -> ! {
-	fmt.fprintfln(os.stderr, "[ERROR]: %s", message)
+errout :: proc(message: string , args : ..any ) -> ! {
+	raw := fmt.tprintf(message , ..args)
+	fmt.fprintfln(os.stderr, "[ERROR]: %s", raw)
 	os.exit(-1)
 }
 
-debugout :: #force_inline proc(message: string) {
-	fmt.fprintfln(os.stdout, "[DEBUG]: %s", message)
+debugout :: proc(message: string , args : ..any) {
+	raw := fmt.tprintf(message , ..args)
+	fmt.fprintfln(os.stderr, "[DEBUG]: %s", raw)
 }
+
 
 
 main :: proc() {
@@ -41,7 +44,8 @@ main :: proc() {
 	fmt.print("\n")
 	debugout("TOKENIZE SUCCCESS!")
 
-	ast_nodes := parse_program(tokens)
+	stream := TokenStream { tokens = tokens[:] , next_index = 0 }
+	ast_nodes := parse_program(&stream)
 	fmt.println("ast_nodes: ")
 	fmt.println(ast_nodes)
 	debugout("PARSING SUCCESS!")

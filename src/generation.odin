@@ -57,7 +57,7 @@ generate_statement :: proc(file : ^os.File , node : AstNode , stack : ^Stack) {
 		case .EXIT_STATEMENT:
 			generate_exit_statement(file  , node , stack)
 		case:
-			errout("unexpected generation error!")
+			errout("Failed to generate statement as assembly instruction!\nInvalid node found at line-number: %i at column: %i" , node.position.line_number , node.position.column_number)
 	}
 }
 
@@ -95,29 +95,23 @@ generate_declaration_statement :: proc(file : ^os.File , node : AstNode , stack 
 
 	emit_assembly(file , "; declare %s" , lhs.value , level =  1)
 
-	if rhs.children[0].type == .IDENTIFIER {
+	if rhs.type == .IDENTIFIER {
 
-		if rhs.children[0].value not_in stack.variables {
-			fmt.printfln("undeclared identifier: %s" , rhs.children[0].value)
-			os.exit(-1)
-		}
+		if rhs.value not_in stack.variables do errout("Failed to generate declaration statement as assembly instruction!\nundeclared identifier '%s' found at line-number: %i at column: %i" , node.position.line_number , node.position.column_number)
 
-		variable_pointer := stack.variables[rhs.children[0].value]
+
+		variable_pointer := stack.variables[rhs.value]
 		variable_offset := stack.top - variable_pointer
 
 		emit_assembly(file , "mov rax , [rsp + %i]" , variable_offset , level = 1)
 	}
-	else if rhs.children[0].type == .INTEGER_LITERAL {
+	else if rhs.type == .INTEGER_LITERAL {
 
-		emit_assembly(file , "mov rax , %s" , rhs.children[0].value , level = 1)
+		emit_assembly(file , "mov rax , %s" , rhs.value , level = 1)
 	}
-	else do errout("invalid declaration")
+	else do errout("Failed to generate declaration statement as assembly instruction!\nundeclared identifier '%s' found at line-number: %i at column: %i" , node.position.line_number , node.position.column_number)
 
-	if lhs.value in stack.variables {
-
-		fmt.printfln("variable '%s' already declared!" , lhs.value)
-		os.exit(-1)
-	}
+	if lhs.value in stack.variables do errout("Duplicate variable '%s' declared at line-number: %i at column: %i " , lhs.value , node.position.line_number , node.position.column_number)
 
 	emit_assembly(file , "mov [rsp] , rax" , level = 1)
 	emit_assembly(file , "sub rsp , 8" , level = 1)
@@ -128,49 +122,34 @@ generate_declaration_statement :: proc(file : ^os.File , node : AstNode , stack 
 
 generate_assignment_statement :: proc(file : ^os.File , node : AstNode , stack : ^Stack) {
 
-
-
-	// lhs has no children as it is already at terminal state i.e. most irreducible state
 	lhs := node.children[0]
 	rhs := node.children[1]
 
 	emit_assembly(file , "; assign to %s" , lhs.value , level =  1)
 
-	if rhs.children[0].type == .IDENTIFIER {
+	if rhs.type == .IDENTIFIER {
 
-		if rhs.children[0].value not_in stack.variables {
-			fmt.printfln("undeclared identifier: %s" , rhs.children[0].value)
-			os.exit(-1)
-		}
+		if rhs.value not_in stack.variables do errout("Failed to generate declaration statement as assembly instruction!\nundeclared identifier '%s' found at line-number: %i at column: %i" , node.position.line_number , node.position.column_number)
 
-		variable_pointer := stack.variables[rhs.children[0].value]
+
+		variable_pointer := stack.variables[rhs.value]
 		variable_offset := stack.top - variable_pointer
 
 		emit_assembly(file , "mov rax , [rsp + %i]" , variable_offset , level = 1)
 	}
-	else if rhs.children[0].type == .INTEGER_LITERAL {
+	else if rhs.type == .INTEGER_LITERAL {
 
-		emit_assembly(file , "mov rax , %s" , rhs.children[0].value , level = 1)
+		emit_assembly(file , "mov rax , %s" , rhs.value , level = 1)
 	}
-	else do errout("invalid assignment")
+	else do errout("Failed to generate statement as assembly instruction!\nInvalid node found at line-number: %i at column: %i" , node.position.line_number , node.position.column_number)
 
-	if lhs.value not_in stack.variables {
-
-		fmt.printfln("invalid assignment to undeclared variable: %s" , lhs.value)
-		os.exit(-1)
-	}
+	if lhs.value not_in stack.variables do errout("Failed to generate declaration statement as assembly instruction!\nundeclared identifier '%s' found at line-number: %i at column: %i" , node.position.line_number , node.position.column_number)
 
 	emit_assembly(file , "; move value to stack offset for %s" , lhs.value , level = 1)
 	variable_pointer := stack.variables[lhs.value]
 	variable_offset := stack.top - variable_pointer
 
 	emit_assembly(file , "mov [rsp + %i] , rax" , variable_offset , level = 1)
-
-
-
-
-
-
 
 }
 
@@ -182,22 +161,20 @@ generate_exit_statement :: proc(file : ^os.File , node : AstNode , stack : ^Stac
 
 	emit_assembly(file , "mov rax , 60" , level = 1)
 
-	if parameter.children[0].type == .IDENTIFIER {
+	if parameter.type == .IDENTIFIER {
 
-		if parameter.children[0].value not_in stack.variables {
-			fmt.printfln("undeclared identifier: %s" , parameter.children[0].value)
-			os.exit(1)
-		}
+		if parameter.value not_in stack.variables do errout("Failed to generate declaration statement as assembly instruction!\nundeclared identifier '%s' found at line-number: %i at column: %i" , node.position.line_number , node.position.column_number)
 
-		variable_pointer := stack.variables[parameter.children[0].value]
+		variable_pointer := stack.variables[parameter.value]
 		variable_offset := stack.top - variable_pointer
 
 		emit_assembly(file , "mov rdi , [rsp + %i]" , variable_offset , level = 1)
 	}
-	else if parameter.children[0].type == .INTEGER_LITERAL {
-		emit_assembly(file , "mov rdi , %s" , parameter.children[0].value , level = 1)
+	else if parameter.type == .INTEGER_LITERAL {
+		emit_assembly(file , "mov rdi , %s" , parameter.value , level = 1)
 	}
-	else do errout("invalid exit statement")
+	else do errout("Failed to generate statement as assembly instruction!\nInvalid node found at line-number: %i at column: %i" , node.position.line_number , node.position.column_number)
+
 
 	emit_assembly(file , "syscall" , level = 1)
 }
